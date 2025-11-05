@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+      app: backend
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: backend
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: backend
+        image: "{{ .Values.backend.image }}:{{ .Values.backend.tag }}"
+        ports:
+        - containerPort: 8001
+        env:
+        - name: MONGO_URL
+          value: {{ .Values.backend.env.MONGO_URL }}
+        - name: DB_NAME
+          value: {{ .Values.backend.env.DB_NAME }}
+        - name: CORS_ORIGINS
+          value: {{ .Values.backend.env.CORS_ORIGINS }}
