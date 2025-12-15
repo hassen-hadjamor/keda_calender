@@ -421,7 +421,6 @@ async def get_scaled_objects():
             custom_api.list_cluster_custom_object,
             group="keda.sh",
             version="v1alpha1",
-            namespace="test",
             plural="scaledobjects"
         )
         
