@@ -10,6 +10,7 @@ from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
+from kubernetes import client as k8s_client, config as k8s_config
 
 
 ROOT_DIR = Path(__file__).parent
@@ -19,6 +20,17 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+# Kubernetes connection
+try:
+    k8s_config.load_incluster_config()
+except k8s_config.ConfigException:
+    try:
+        k8s_config.load_kube_config()
+    except k8s_config.ConfigException:
+        logging.warning("Could not load Kubernetes config. K8s integration will be disabled.")
+
+custom_api = k8s_client.CustomObjectsApi()
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -320,16 +332,59 @@ async def delete_event(event_id: str):
 
 @api_router.get("/scaled-objects", response_model=List[ScaledObject])
 async def get_scaled_objects():
-    """Get all scaled objects"""
-    scaled_objects = await db.scaled_objects.find({}, {"_id": 0}).to_list(1000)
-    
-    for obj in scaled_objects:
-        if isinstance(obj['created_at'], str):
-            obj['created_at'] = datetime.fromisoformat(obj['created_at'])
-        if isinstance(obj['updated_at'], str):
-            obj['updated_at'] = datetime.fromisoformat(obj['updated_at'])
-    
-    return scaled_objects
+    """Get all scaled objects from Kubernetes cluster"""
+    try:
+        # Fetch from Kubernetes
+        k8s_objects = custom_api.list_cluster_custom_object(
+            group="keda.sh",
+            version="v1alpha1",
+            plural="scaledobjects"
+        )
+        
+        scaled_objects = []
+        for item in k8s_objects.get('items', []):
+            metadata = item.get('metadata', {})
+            spec = item.get('spec', {})
+            
+            # Parse triggers
+            triggers = []
+            for trigger in spec.get('triggers', []):
+                triggers.append(TriggerConfig(
+                    trigger_type=trigger.get('type', 'custom'),
+                    metadata=trigger.get('metadata', {}),
+                    desired_replicas=1 # Default as it might not be in trigger spec
+                ))
+            
+            # Create ScaledObject model
+            obj = ScaledObject(
+                name=metadata.get('name'),
+                namespace=metadata.get('namespace', 'default'),
+                target_deployment=spec.get('scaleTargetRef', {}).get('name', ''),
+                min_replicas=spec.get('minReplicaCount', 0),
+                max_replicas=spec.get('maxReplicaCount', 10),
+                triggers=triggers,
+                labels=metadata.get('labels', {}),
+                id=metadata.get('uid', str(uuid.uuid4())),
+                created_at=datetime.fromisoformat(metadata.get('creationTimestamp').replace('Z', '+00:00')) if metadata.get('creationTimestamp') else datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
+            )
+            scaled_objects.append(obj)
+            
+        return scaled_objects
+        
+    except Exception as e:
+        logger.error(f"Error fetching ScaledObjects from K8s: {e}")
+        # Fallback to DB if K8s fails or not configured
+        logger.info("Falling back to local database")
+        scaled_objects = await db.scaled_objects.find({}, {"_id": 0}).to_list(1000)
+        
+        for obj in scaled_objects:
+            if isinstance(obj['created_at'], str):
+                obj['created_at'] = datetime.fromisoformat(obj['created_at'])
+            if isinstance(obj['updated_at'], str):
+                obj['updated_at'] = datetime.fromisoformat(obj['updated_at'])
+        
+        return scaled_objects
 
 
 # Include the router in the main app
