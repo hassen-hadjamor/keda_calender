@@ -14,7 +14,7 @@ spec:
         app: backend
         release: {{ .Release.Name }}
     spec:
-      serviceAccountName: {{ include "charts.fullname" . }}-backend
+      serviceAccountName: {{ .Release.Name }}-backend
       containers:
       - name: {{ .Chart.Name }}-backend
         image: "{{ .Values.backend.image }}:{{ .Values.backend.tag }}"

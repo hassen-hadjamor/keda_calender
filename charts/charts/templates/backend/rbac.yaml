@@ -1,9 +1,10 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "charts.fullname" . }}-backend-viewer
+  name: {{ .Release.Name }}-backend-viewer
   labels:
-    {{- include "charts.labels" . | nindent 4 }}
+    app: backend
+    release: {{ .Release.Name }}
 rules:
   - apiGroups: ["keda.sh"]
     resources: ["scaledobjects"]
@@ -12,14 +13,15 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "charts.fullname" . }}-backend-viewer
+  name: {{ .Release.Name }}-backend-viewer
   labels:
-    {{- include "charts.labels" . | nindent 4 }}
+    app: backend
+    release: {{ .Release.Name }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "charts.fullname" . }}-backend
+    name: {{ .Release.Name }}-backend
     namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
-  name: {{ include "charts.fullname" . }}-backend-viewer
+  name: {{ .Release.Name }}-backend-viewer
   apiGroup: rbac.authorization.k8s.io
