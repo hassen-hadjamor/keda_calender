@@ -231,6 +231,7 @@ async def get_deployments():
             
         # Fetch from Kubernetes
         k8s_deployments = await run_in_threadpool(apps_api.list_deployment_for_all_namespaces)
+        logger.info(f"Found {len(k8s_deployments.items)} deployments in K8s")
         
         deployments = []
         for dep in k8s_deployments.items:
@@ -273,6 +274,56 @@ async def get_events():
             event['end'] = datetime.fromisoformat(event['end'])
         if isinstance(event['created_at'], str):
             event['created_at'] = datetime.fromisoformat(event['created_at'])
+
+    # Fetch ScaledObjects from K8s and add as synthetic events
+    if K8S_ENABLED:
+        try:
+            k8s_objects = await run_in_threadpool(
+                custom_api.list_cluster_custom_object,
+                group="keda.sh",
+                version="v1alpha1",
+                plural="scaledobjects"
+            )
+            
+            existing_so_ids = set(e.get('scaled_object_id') for e in events)
+            
+            for item in k8s_objects.get('items', []):
+                metadata = item.get('metadata', {})
+                uid = metadata.get('uid')
+                
+                # Skip if already represented by a database event
+                if uid in existing_so_ids:
+                    continue
+                    
+                spec = item.get('spec', {})
+                triggers = spec.get('triggers', [])
+                trigger_type = triggers[0].get('type', 'custom') if triggers else 'custom'
+                
+                # Parse creation timestamp
+                creation_ts_str = metadata.get('creationTimestamp')
+                if creation_ts_str:
+                    start_dt = datetime.fromisoformat(creation_ts_str.replace('Z', '+00:00'))
+                else:
+                    start_dt = datetime.now(timezone.utc)
+                
+                synthetic_event = CalendarEvent(
+                    id=uid, # Use K8s UID as event ID
+                    title=f"{metadata.get('name')} (K8s)",
+                    start=start_dt,
+                    all_day=True, # Show as all-day since it's a persistent object
+                    trigger_type=trigger_type,
+                    scaled_object_id=uid,
+                    target_deployment=spec.get('scaleTargetRef', {}).get('name', 'unknown'),
+                    desired_replicas=spec.get('maxReplicaCount', 1), # Best guess
+                    color=get_event_color(trigger_type),
+                    status=EventStatus.ACTIVE,
+                    metadata={"source": "k8s", "namespace": metadata.get('namespace')}
+                )
+                
+                events.append(synthetic_event.model_dump())
+                
+        except Exception as e:
+            logger.error(f"Error fetching/merging K8s ScaledObjects in get_events: {e}")
     
     return events
 
