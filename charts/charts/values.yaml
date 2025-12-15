@@ -1,7 +1,5 @@
 frontend:
   image: ghcr.io/hassen-hadjamor/keda_calender/keda-frontend:sha-985ed01
-  
-  keda-frontend
   tag: latest
   replicas: 1
   service:
