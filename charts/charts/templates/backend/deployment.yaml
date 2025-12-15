@@ -24,5 +24,5 @@ spec:
           value: {{ .Values.backend.env.MONGO_URL }}
         - name: DB_NAME
           value: {{ .Values.backend.env.DB_NAME }}
-        - name: CORS_ORIGINS
-          value: {{ .Values.backend.env.CORS_ORIGINS }}
+#        - name: CORS_ORIGINS
+#          value: {{ .Values.backend.env.CORS_ORIGINS }}
