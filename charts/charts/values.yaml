@@ -1,5 +1,5 @@
 frontend:
-  image: keda-frontend
+  image: ghcr.io/hassen-hadjamor/keda_calender/keda-frontend
   tag: latest
   replicas: 1
   service:
@@ -10,7 +10,7 @@ frontend:
     host: "keda.yourdomain.com"
 
 backend:
-  image: keda-backend
+  image: ghcr.io/hassen-hadjamor/keda_calender/keda-backend
   tag: latest
   replicas: 1
   service:
