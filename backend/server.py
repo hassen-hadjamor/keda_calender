@@ -61,6 +61,8 @@ class TriggerType(str, Enum):
     KAFKA = "kafka"
     HTTP = "http"
     PROMETHEUS = "prometheus"
+    CPU = "cpu"
+    MEMORY = "memory"
     CUSTOM = "custom"
 
 class ScaledObjectType(str, Enum):
@@ -157,6 +159,8 @@ def get_event_color(trigger_type: TriggerType) -> str:
         TriggerType.KAFKA: "#f59e0b",  # Amber
         TriggerType.HTTP: "#8b5cf6",  # Purple
         TriggerType.PROMETHEUS: "#ef4444",  # Red
+        TriggerType.CPU: "#ef4444",  # Red (same as prometheus for now)
+        TriggerType.MEMORY: "#ef4444",  # Red
         TriggerType.CUSTOM: "#6b7280"  # Gray
     }
     return color_map.get(trigger_type, "#3b82f6")

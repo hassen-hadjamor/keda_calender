@@ -14,18 +14,20 @@ const triggerTypes = [
   { value: 'kafka', label: 'Kafka' },
   { value: 'http', label: 'HTTP' },
   { value: 'prometheus', label: 'Prometheus' },
+  { value: 'cpu', label: 'CPU' },
+  { value: 'memory', label: 'Memory' },
   { value: 'custom', label: 'Custom' }
 ];
 
-const EventModal = ({ 
-  isOpen, 
-  onClose, 
-  event, 
-  selectedDate, 
+const EventModal = ({
+  isOpen,
+  onClose,
+  event,
+  selectedDate,
   deployments,
-  onCreate, 
-  onUpdate, 
-  onDelete 
+  onCreate,
+  onUpdate,
+  onDelete
 }) => {
   const [formData, setFormData] = useState({
     title: '',
@@ -71,7 +73,7 @@ const EventModal = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     const eventData = {
       ...formData,
       start: new Date(formData.start).toISOString(),
@@ -99,7 +101,7 @@ const EventModal = ({
             {event ? 'Edit Scaling Event' : 'Create Scaling Event'}
           </DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="event-form">
           <div className="form-group">
             <Label htmlFor="title">Event Title *</Label>
@@ -199,9 +201,9 @@ const EventModal = ({
 
           <DialogFooter className="modal-footer">
             {event && (
-              <Button 
-                type="button" 
-                variant="destructive" 
+              <Button
+                type="button"
+                variant="destructive"
                 onClick={handleDelete}
                 className="delete-btn"
                 data-testid="delete-event-button"

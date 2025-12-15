@@ -88,6 +88,14 @@ const Sidebar = ({ deployments, namespaceInfo }) => {
             <span className="legend-label">Prometheus</span>
           </div>
           <div className="legend-item">
+            <span className="legend-color" style={{ background: '#ef4444' }}></span>
+            <span className="legend-label">CPU</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-color" style={{ background: '#ef4444' }}></span>
+            <span className="legend-label">Memory</span>
+          </div>
+          <div className="legend-item">
             <span className="legend-color" style={{ background: '#6b7280' }}></span>
             <span className="legend-label">Custom</span>
           </div>

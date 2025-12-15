@@ -17,7 +17,7 @@ backend:
     type: ClusterIP
     port: 8001
   env:
-    MONGO_URL: "mongodb://mongodb:27017"
+    MONGO_URL: "mongodb://keda-dash-mongodb:27017"
     DB_NAME: "keda_db"
     CORS_ORIGINS: "*"
 
