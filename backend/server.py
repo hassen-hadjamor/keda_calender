@@ -31,6 +31,7 @@ except k8s_config.ConfigException:
         logging.warning("Could not load Kubernetes config. K8s integration will be disabled.")
 
 custom_api = k8s_client.CustomObjectsApi()
+apps_api = k8s_client.AppsV1Api()
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -155,26 +156,71 @@ async def root():
 
 @api_router.get("/namespace-info", response_model=NamespaceInfo)
 async def get_namespace_info():
-    """Get namespace information and statistics"""
-    total_events = await db.calendar_events.count_documents({})
-    total_deployments = await db.deployments.count_documents({})
-    total_scaled_objects = await db.scaled_objects.count_documents({})
-    active_events = await db.calendar_events.count_documents({"status": "active"})
-    
-    return NamespaceInfo(
-        name="keda-system",
-        total_events=total_events,
-        total_deployments=total_deployments,
-        total_scaled_objects=total_scaled_objects,
-        active_events=active_events
-    )
+    """Get namespace information and statistics from Kubernetes"""
+    try:
+        # Count ScaledObjects
+        k8s_objects = custom_api.list_cluster_custom_object(
+            group="keda.sh",
+            version="v1alpha1",
+            plural="scaledobjects"
+        )
+        total_scaled_objects = len(k8s_objects.get('items', []))
+        
+        # Count Deployments
+        deployments = apps_api.list_deployment_for_all_namespaces()
+        total_deployments = len(deployments.items)
+        
+        # Events are still local for now as they are calendar events
+        total_events = await db.calendar_events.count_documents({})
+        active_events = await db.calendar_events.count_documents({"status": "active"})
+        
+        return NamespaceInfo(
+            name="all-namespaces", # Since we are listing from all
+            total_events=total_events,
+            total_deployments=total_deployments,
+            total_scaled_objects=total_scaled_objects,
+            active_events=active_events
+        )
+    except Exception as e:
+        logger.error(f"Error fetching namespace info from K8s: {e}")
+        # Fallback to DB
+        total_events = await db.calendar_events.count_documents({})
+        total_deployments = await db.deployments.count_documents({})
+        total_scaled_objects = await db.scaled_objects.count_documents({})
+        active_events = await db.calendar_events.count_documents({"status": "active"})
+        
+        return NamespaceInfo(
+            name="keda-system",
+            total_events=total_events,
+            total_deployments=total_deployments,
+            total_scaled_objects=total_scaled_objects,
+            active_events=active_events
+        )
 
 
 @api_router.get("/deployments", response_model=List[Deployment])
 async def get_deployments():
-    """List all deployments"""
-    deployments = await db.deployments.find({}, {"_id": 0}).to_list(1000)
-    return deployments
+    """List all deployments from Kubernetes"""
+    try:
+        # Fetch from Kubernetes
+        k8s_deployments = apps_api.list_deployment_for_all_namespaces()
+        
+        deployments = []
+        for dep in k8s_deployments.items:
+            deployments.append(Deployment(
+                name=dep.metadata.name,
+                namespace=dep.metadata.namespace,
+                current_replicas=dep.status.replicas if dep.status.replicas else 0,
+                labels=dep.metadata.labels if dep.metadata.labels else {},
+                id=dep.metadata.uid
+            ))
+            
+        return deployments
+    except Exception as e:
+        logger.error(f"Error fetching deployments from K8s: {e}")
+        # Fallback to DB
+        deployments = await db.deployments.find({}, {"_id": 0}).to_list(1000)
+        return deployments
 
 
 @api_router.post("/deployments", response_model=Deployment)
