@@ -14,8 +14,9 @@ spec:
         app: backend
         release: {{ .Release.Name }}
     spec:
+      serviceAccountName: {{ include "charts.fullname" . }}-backend
       containers:
-      - name: backend
+      - name: {{ .Chart.Name }}-backend
         image: "{{ .Values.backend.image }}:{{ .Values.backend.tag }}"
         ports:
         - containerPort: 8001
