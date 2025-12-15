@@ -11,10 +11,18 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from kubernetes import client as k8s_client, config as k8s_config
+from starlette.concurrency import run_in_threadpool
 
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Configure logging first
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -22,15 +30,19 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # Kubernetes connection
+K8S_ENABLED = False
 try:
     k8s_config.load_incluster_config()
-    logging.info("Loaded in-cluster Kubernetes config")
+    logger.info("Loaded in-cluster Kubernetes config")
+    K8S_ENABLED = True
 except k8s_config.ConfigException:
     try:
         k8s_config.load_kube_config()
-        logging.info("Loaded local Kubernetes config")
+        logger.info("Loaded local Kubernetes config")
+        K8S_ENABLED = True
     except k8s_config.ConfigException:
-        logging.warning("Could not load Kubernetes config. K8s integration will be disabled.")
+        logger.warning("Could not load Kubernetes config. K8s integration will be disabled.")
+        K8S_ENABLED = False
 
 custom_api = k8s_client.CustomObjectsApi()
 apps_api = k8s_client.AppsV1Api()
@@ -161,8 +173,12 @@ async def get_namespace_info():
     """Get namespace information and statistics from Kubernetes"""
     logger.info("Fetching namespace info")
     try:
+        if not K8S_ENABLED:
+            raise Exception("K8s integration disabled")
+
         # Count ScaledObjects
-        k8s_objects = custom_api.list_cluster_custom_object(
+        k8s_objects = await run_in_threadpool(
+            custom_api.list_cluster_custom_object,
             group="keda.sh",
             version="v1alpha1",
             plural="scaledobjects"
@@ -170,7 +186,7 @@ async def get_namespace_info():
         total_scaled_objects = len(k8s_objects.get('items', []))
         
         # Count Deployments
-        deployments = apps_api.list_deployment_for_all_namespaces()
+        deployments = await run_in_threadpool(apps_api.list_deployment_for_all_namespaces)
         total_deployments = len(deployments.items)
         
         # Events are still local for now as they are calendar events
@@ -206,8 +222,11 @@ async def get_deployments():
     """List all deployments from Kubernetes"""
     logger.info("Fetching deployments list")
     try:
+        if not K8S_ENABLED:
+            raise Exception("K8s integration disabled")
+            
         # Fetch from Kubernetes
-        k8s_deployments = apps_api.list_deployment_for_all_namespaces()
+        k8s_deployments = await run_in_threadpool(apps_api.list_deployment_for_all_namespaces)
         
         deployments = []
         for dep in k8s_deployments.items:
@@ -390,8 +409,12 @@ async def get_scaled_objects():
     """Get all scaled objects from Kubernetes cluster"""
     logger.info("Fetching scaled objects from Kubernetes")
     try:
+        if not K8S_ENABLED:
+            raise Exception("K8s integration disabled")
+            
         # Fetch from Kubernetes
-        k8s_objects = custom_api.list_cluster_custom_object(
+        k8s_objects = await run_in_threadpool(
+            custom_api.list_cluster_custom_object,
             group="keda.sh",
             version="v1alpha1",
             plural="scaledobjects"
@@ -454,12 +477,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Logging already configured at top
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
