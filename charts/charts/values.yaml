@@ -1,6 +1,6 @@
 frontend:
-  image: ghcr.io/hassen-hadjamor/keda_calender/keda-frontend:sha-985ed01
-  tag: latest
+  image: ghcr.io/hassen-hadjamor/keda_calender/keda-frontend
+  tag: sha-985ed01
   replicas: 1
   service:
     type: ClusterIP
@@ -10,8 +10,8 @@ frontend:
     host: "keda.yourdomain.com"
 
 backend:
-  image: ghcr.io/hassen-hadjamor/keda_calender/keda-backend:sha-ae77145
-  tag: latest
+  image: ghcr.io/hassen-hadjamor/keda_calender/keda-backend
+  tag: sha-ae77145
   replicas: 1
   service:
     type: ClusterIP
