@@ -24,9 +24,11 @@ db = client[os.environ['DB_NAME']]
 # Kubernetes connection
 try:
     k8s_config.load_incluster_config()
+    logging.info("Loaded in-cluster Kubernetes config")
 except k8s_config.ConfigException:
     try:
         k8s_config.load_kube_config()
+        logging.info("Loaded local Kubernetes config")
     except k8s_config.ConfigException:
         logging.warning("Could not load Kubernetes config. K8s integration will be disabled.")
 
@@ -157,6 +159,7 @@ async def root():
 @api_router.get("/namespace-info", response_model=NamespaceInfo)
 async def get_namespace_info():
     """Get namespace information and statistics from Kubernetes"""
+    logger.info("Fetching namespace info")
     try:
         # Count ScaledObjects
         k8s_objects = custom_api.list_cluster_custom_object(
@@ -201,6 +204,7 @@ async def get_namespace_info():
 @api_router.get("/deployments", response_model=List[Deployment])
 async def get_deployments():
     """List all deployments from Kubernetes"""
+    logger.info("Fetching deployments list")
     try:
         # Fetch from Kubernetes
         k8s_deployments = apps_api.list_deployment_for_all_namespaces()
@@ -226,6 +230,7 @@ async def get_deployments():
 @api_router.post("/deployments", response_model=Deployment)
 async def create_deployment(deployment: Deployment):
     """Create a new deployment"""
+    logger.info(f"Creating deployment: {deployment.name}")
     doc = deployment.model_dump()
     await db.deployments.insert_one(doc)
     return deployment
@@ -234,6 +239,7 @@ async def create_deployment(deployment: Deployment):
 @api_router.get("/events", response_model=List[CalendarEvent])
 async def get_events():
     """Get all calendar events"""
+    logger.info("Fetching calendar events")
     events = await db.calendar_events.find({}, {"_id": 0}).to_list(1000)
     
     # Convert ISO strings back to datetime
@@ -251,6 +257,7 @@ async def get_events():
 @api_router.post("/events", response_model=CalendarEvent)
 async def create_event(event_data: CalendarEventCreate):
     """Create a new calendar event"""
+    logger.info(f"Creating event: {event_data.title} for deployment {event_data.target_deployment}")
     # Parse datetime strings
     start_dt = datetime.fromisoformat(event_data.start.replace('Z', '+00:00'))
     end_dt = None
@@ -321,6 +328,7 @@ async def get_event(event_id: str):
 @api_router.put("/events/{event_id}", response_model=CalendarEvent)
 async def update_event(event_id: str, event_data: CalendarEventCreate):
     """Update an existing event"""
+    logger.info(f"Updating event: {event_id}")
     existing = await db.calendar_events.find_one({"id": event_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -360,6 +368,7 @@ async def update_event(event_id: str, event_data: CalendarEventCreate):
 @api_router.delete("/events/{event_id}")
 async def delete_event(event_id: str):
     """Delete an event"""
+    logger.info(f"Deleting event: {event_id}")
     event = await db.calendar_events.find_one({"id": event_id})
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -379,6 +388,7 @@ async def delete_event(event_id: str):
 @api_router.get("/scaled-objects", response_model=List[ScaledObject])
 async def get_scaled_objects():
     """Get all scaled objects from Kubernetes cluster"""
+    logger.info("Fetching scaled objects from Kubernetes")
     try:
         # Fetch from Kubernetes
         k8s_objects = custom_api.list_cluster_custom_object(

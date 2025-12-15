@@ -26,6 +26,7 @@ function App() {
   }, []);
 
   const fetchAllData = async () => {
+    console.info('Fetching all initial data...');
     try {
       setLoading(true);
       await Promise.all([
@@ -43,7 +44,9 @@ function App() {
 
   const fetchEvents = async () => {
     try {
+      console.info('Fetching events...');
       const response = await axios.get(`${API}/events`);
+      console.info(`Fetched ${response.data.length} events`);
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -52,7 +55,9 @@ function App() {
 
   const fetchDeployments = async () => {
     try {
+      console.info('Fetching deployments...');
       const response = await axios.get(`${API}/deployments`);
+      console.info(`Fetched ${response.data.length} deployments`);
       setDeployments(response.data);
     } catch (error) {
       console.error('Error fetching deployments:', error);
@@ -61,7 +66,9 @@ function App() {
 
   const fetchNamespaceInfo = async () => {
     try {
+      console.info('Fetching namespace info...');
       const response = await axios.get(`${API}/namespace-info`);
+      console.info('Namespace info fetched:', response.data);
       setNamespaceInfo(response.data);
     } catch (error) {
       console.error('Error fetching namespace info:', error);
@@ -83,6 +90,7 @@ function App() {
 
   const handleCreateEvent = async (eventData) => {
     try {
+      console.info('Creating new event:', eventData);
       await axios.post(`${API}/events`, eventData);
       toast.success('Event created successfully');
       await fetchAllData();
@@ -95,6 +103,7 @@ function App() {
 
   const handleUpdateEvent = async (eventId, eventData) => {
     try {
+      console.info(`Updating event ${eventId}:`, eventData);
       await axios.put(`${API}/events/${eventId}`, eventData);
       toast.success('Event updated successfully');
       await fetchAllData();
@@ -107,6 +116,7 @@ function App() {
 
   const handleDeleteEvent = async (eventId) => {
     try {
+      console.info(`Deleting event ${eventId}`);
       await axios.delete(`${API}/events/${eventId}`);
       toast.success('Event deleted successfully');
       await fetchAllData();
@@ -125,12 +135,12 @@ function App() {
   return (
     <div className="app-container">
       <Toaster position="top-right" richColors />
-      <Header 
-        namespaceInfo={namespaceInfo} 
+      <Header
+        namespaceInfo={namespaceInfo}
         onRefresh={handleRefresh}
       />
       <div className="main-content">
-        <Sidebar 
+        <Sidebar
           deployments={deployments}
           namespaceInfo={namespaceInfo}
         />
@@ -149,7 +159,7 @@ function App() {
           )}
         </div>
       </div>
-      
+
       {isModalOpen && (
         <EventModal
           isOpen={isModalOpen}
