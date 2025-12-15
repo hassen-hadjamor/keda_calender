@@ -14,8 +14,9 @@ backend:
   tag: latest
   replicas: 1
   service:
-    type: ClusterIP
+    type: NodePort
     port: 8001
+    nodePort: 30001
   env:
     MONGO_URL: "mongodb://keda-dash-mongodb:27017"
     DB_NAME: "keda_db"

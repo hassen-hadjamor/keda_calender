@@ -8,8 +8,8 @@ import EventModal from '@/components/EventModal';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
-const API = `${BACKEND_URL}/api`;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:30001';
+const API = BACKEND_URL ? `${BACKEND_URL}/api` : '/api';
 
 function App() {
   const [events, setEvents] = useState([]);
