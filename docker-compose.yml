@@ -48,7 +48,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - REACT_APP_BACKEND_URL=http://localhost:8001
+        REACT_APP_BACKEND_URL: http://keda-dash-backend:8001
     container_name: keda-frontend
     restart: unless-stopped
     ports:
@@ -58,7 +58,7 @@ services:
     networks:
       - keda-network
     environment:
-      - REACT_APP_BACKEND_URL=http://localhost:8001
+      - REACT_APP_BACKEND_URL=http://keda-dash-backend:8001
 
 networks:
   keda-network:
